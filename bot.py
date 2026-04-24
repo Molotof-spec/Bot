@@ -22,24 +22,31 @@ keyboard = [
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
-def clean_text(text: str) -> str:
+def clean_text(text):
     text = text or ""
-    text = text.replace("```", "")
-    text = text.replace("$$", "")
-    text = text.replace("$", "")
-    text = text.replace("\\frac", "")
-    text = text.replace("\\cdot", "×")
-    text = text.replace("\\times", "×")
-    text = text.replace("\\div", "÷")
-    text = text.replace("\\left", "")
-    text = text.replace("\\right", "")
-    text = text.replace("\\approx", "≈")
-    text = text.replace("###", "")
-    text = text.replace("**", "")
-    text = text.replace("{", "")
-    text = text.replace("}", "")
-    return text.strip()
 
+    replacements = {
+        "\\sqrt": "sqrt",
+        "\\frac": "",
+        "\\cdot": "×",
+        "\\times": "×",
+        "\\div": "÷",
+        "\\left": "",
+        "\\right": "",
+        "\\approx": "≈",
+        "\\": "",
+        "$": "",
+        "```": "",
+        "###": "",
+        "**": "",
+    }
+
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+
+    text = text.replace("{", "").replace("}", "")
+
+    return text.strip()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
