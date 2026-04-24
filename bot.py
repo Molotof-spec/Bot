@@ -11,7 +11,6 @@ client = Groq(api_key=GROQ_API_KEY)
 user_histories = {}
 
 keyboard = [
-[24.04.2026 17:05] Иван: import os
 import base64
 from groq import Groq
 from telegram import Update, ReplyKeyboardMarkup
