@@ -1,26 +1,10 @@
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
-from groq import Groq
 import os
-
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-client = Groq(api_key=GROQ_API_KEY)
-
-user_histories = {}
-
-keyboard = [
 import base64
+
 from groq import Groq
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -37,13 +21,13 @@ if not WEBHOOK_URL:
 client = Groq(api_key=GROQ_API_KEY)
 
 TEXT_MODEL = "llama-3.3-70b-versatile"
-VISION_MODEL = "llava-v1.5-7b-4096-preview"
+VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 user_histories = {}
 
 keyboard = [
-    ["🧠 Спросить AI", "🖼 Анализ фото"],
-    ["🧹 Очистить память", "📚 Помощь"],
+    ["🤖 Спросить AI", "🖼 Анализ фото"],
+    ["🧹 Очистить память", "📜 Помощь"],
     ["😎 Кто ты?", "🎲 Факт"],
 ]
 
@@ -53,24 +37,18 @@ markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет 😎 Я AI-бот.\n\n"
-        "Я умею:\n"
-        "• отвечать на вопросы\n"
-        "• помнить контекст\n"
-        "• понимать картинки\n"
-        "• делать краткий разбор фото\n\n"
-        "Напиши текст или отправь картинку.",
+        "Я умею отвечать на вопросы, помнить контекст и анализировать картинки.\n"
+        "Напиши текст или отправь фото.",
         reply_markup=markup,
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📚 Команды:\n\n"
         "/start — запуск\n"
         "/clear — очистить память\n"
         "/help — помощь\n\n"
-        "🖼 Чтобы я понял картинку — просто отправь фото.\n"
-        "Можно добавить подпись, например: «что тут не так?»"
+        "Фото: просто отправь картинку с подписью или без."
     )
 
 
@@ -84,24 +62,23 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    if text == "🧹 Очистить память":
+    if text in ["🧹 Очистить память", "/clear"]:
         user_histories[user_id] = []
         await update.message.reply_text("Память очищена 🧹")
         return
 
-    if text == "📚 Помощь":
+    if text == "📜 Помощь":
         await help_command(update, context)
         return
 
     if text == "😎 Кто ты?":
         await update.message.reply_text(
-            "Я твой AI-бот на Python + Telegram + Groq 🚀\n"
-            "Работаю на Render через webhook."
+            "Я AI-бот на Python + Telegram + Groq + Render 🚀"
         )
         return
 
     if text == "🖼 Анализ фото":
-        await update.message.reply_text("Отправь мне фото, и я его разберу 🖼")
+        await update.message.reply_text("Отправь фото, и я его разберу 🖼")
         return
 
     if text == "🎲 Факт":
@@ -120,14 +97,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {
                     "role": "system",
                     "content": (
-                        "Ты умный дружелюбный AI-помощник. "
-                        "Отвечай по-русски, понятно, без воды. "
-                        "Если пользователь просит код — давай готовый рабочий код. "
-                        "Если не уверен — честно скажи."
+                        "Ты умный AI-помощник. Отвечай по-русски, понятно и без воды. "
+                        "Если пользователь просит код, давай готовый рабочий код."
                     ),
                 }
-            ]
-            + user_histories[user_id],
+            ] + user_histories[user_id],
             temperature=0.7,
             max_completion_tokens=1200,
         )
@@ -139,34 +113,26 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         print("Ошибка текста:", e)
-        await update.message.reply_text("Упс, ошибка при ответе 😅 Попробуй ещё раз.")
+        await update.message.reply_text("Упс, ошибка при ответе 😅")
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text("Смотрю картинку 👀")
 
-        photo = update.message.
+        photo = update.message.photo[-1]
         file = await photo.get_file()
         photo_bytes = await file.download_as_bytearray()
-
         image_base64 = base64.b64encode(photo_bytes).decode("utf-8")
 
         caption = update.message.caption or (
-            "Опиши картинку. Если на ней есть текст, прочитай его. "
-            "Если есть проблема или ошибка, объясни что делать."
+            "Опиши картинку. Если там есть текст или ошибка, объясни что написано и что делать."
         )
 
-        response = client.chat.completions.create(
+        response = client.chat.
+completions.create(
             model=VISION_MODEL,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Ты помощник, который анализирует изображения. "
-                        "Отвечай по-русски. Будь точным и полезным."
-                    ),
-                },
                 {
                     "role": "user",
                     "content": [
@@ -178,7 +144,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             },
                         },
                     ],
-                },
+                }
             ],
             temperature=0.3,
             max_completion_tokens=1200,
@@ -190,7 +156,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("Ошибка фото:", e)
         await update.message.reply_text(
-            "Не смог разобрать картинку 😅 Возможно, фото слишком большое или Groq временно не отвечает."
+            "Не смог разобрать картинку 😅 Возможно, модель для картинок недоступна."
         )
 
 
@@ -209,4 +175,4 @@ app.run_webhook(
     port=PORT,
     url_path=TELEGRAM_TOKEN,
     webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",
-)	
+)
