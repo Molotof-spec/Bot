@@ -1,39 +1,35 @@
 import os
-
 from groq import Groq
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-PORT = int(os.getenv("PORT", 10000))
+PORT = int(os.getenv("PORT", "10000"))
 
 client = Groq(api_key=GROQ_API_KEY)
 
 TEXT_MODEL = "llama-3.3-70b-versatile"
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
+user_histories = {}
+
 keyboard = [
     ["🤖 Спросить AI", "🧹 Очистить память"],
     ["📜 Помощь", "😎 Кто ты?"],
 ]
-
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-user_histories = {}
 
 
 def clean_text(text: str) -> str:
+    text = text or ""
+    text = text.replace("```", "")
     text = text.replace("$$", "")
     text = text.replace("$", "")
     text = text.replace("\\frac", "")
     text = text.replace("\\cdot", "×")
+    text = text.replace("\\times", "×")
     text = text.replace("\\div", "÷")
     text = text.replace("\\left", "")
     text = text.replace("\\right", "")
@@ -47,17 +43,21 @@ def clean_text(text: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет 😎 Я AI-бот. Напиши вопрос или отправь фото.",
+        "Привет 😎 Я AI-бот. Отправь фото с заданием или напиши вопрос.",
         reply_markup=markup,
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
+        "📌 Что я умею:\n"
+        "• отвечать на вопросы\n"
+        "• решать задания с фото\n"
+        "• очищать память кнопкой 🧹\n\n"
+        "Команды:\n"
         "/start — запуск\n"
         "/clear — очистить память\n"
-        "/help — помощь\n\n"
-        "Отправь фото с заданием — я решу его."
+        "/help — помощь"
     )
 
 
@@ -76,17 +76,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image_url = file.file_path
 
         prompt = update.message.caption or (
-           "На картинке школьные примеры. Сначала внимательно распознай дроби и смешанные числа. "
-           "ВАЖНО: если видишь 7 над 10 — это 7/10, а не 710. "
-           "Если видишь 2 1/3 — это смешанное число 2 + 1/3.\n\n"
-           "Реши ВСЕ примеры. Верни ТОЛЬКО финальные ответы, без решения. "
-           "Каждый ответ с новой строки строго в квадратных скобках.\n"
-           "Пример:\n"
-           "[4]\n"
-           "[113/63]\n"
-           "[1,25]\n"
-           "Не используй LaTeX и объяснения."
-       )
+            "Реши ВСЕ примеры с картинки.\n"
+            "Верни ТОЛЬКО финальные ответы.\n"
+            "Без решения, без объяснений, без Markdown, без LaTeX.\n"
+            "Каждый ответ пиши с новой строки строго в квадратных скобках.\n"
+            "Пример:\n"
+            "[4]\n"
+            "[113/63]\n"
+            "[1,25]\n"
+            "Если пример плохо видно, пропусти его."
+        )
 
         response = client.chat.completions.create(
             model=VISION_MODEL,
@@ -100,13 +99,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
             ],
             temperature=0.1,
-            max_completion_tokens=1000,
+            max_completion_tokens=1200,
         )
 
         reply = clean_text(response.choices[0].message.content)
 
         if not reply:
-            reply = "Не смог разобрать картинку 😅 Попробуй фото чётче."
+            reply = "Не смог разобрать картинку 😅 Попробуй сфоткать ближе и чётче."
 
         await update.message.reply_text(reply[:4000])
 
@@ -116,56 +115,68 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text
-
-    if text == "🧹 Очистить память":
-        user_histories[user_id] = []
-        await update.message.reply_text("Память очищена 🧹")
-        return
-
-    if text == "📜 Помощь":
-        await help_command(update, context)
-        return
-
-    if text == "😎 Кто ты?":
-        await update.message.reply_text("Я AI-бот на Python + Telegram + Groq + Render 🚀")
-        return
-
-    if user_id not in user_histories:
-        user_histories[user_id] = []
-
-    user_histories[user_id].append({"role": "user", "content": text})
-    user_histories[user_id] = user_histories[user_id][-10:]
-
     try:
-        response = client.chat.completions(
+        user_id = update.message.from_user.id
+        text = update.message.text or ""
+
+        if text == "🧹 Очистить память":
+            user_histories[user_id] = []
+            await update.message.reply_text("Память очищена 🧹")
+            return
+
+        if text == "📜 Помощь":
+            await help_command(update, context)
+            return
+
+        if text == "😎 Кто ты?":
+            await update
+            message.reply_text("Я AI-бот на Python + Telegram + Groq + Render 🚀")
+            return
+
+        if text == "🤖 Спросить AI":
+            await update.message.reply_text("Напиши свой вопрос 🙂")
+            return
+
+        if user_id not in user_histories:
+            user_histories[user_id] = []
+
+        user_histories[user_id].append({"role": "user", "content": text})
+        user_histories[user_id] = user_histories[user_id][-10:]
+
+        response = client.chat.completions.create(
             model=TEXT_MODEL,
             messages=[
                 {
                     "role": "system",
                     "content": (
                         "Ты умный AI-помощник. Отвечай по-русски понятно и кратко. "
-                        "Не используй LaTeX."
+                        "Не используй LaTeX. Для математики используй обычные символы: × ÷ /."
                     ),
                 }
-            ]
-            + user_histories[user_id],
+            ] + user_histories[user_id],
             temperature=0.7,
             max_completion_tokens=1000,
         )
 
         reply = clean_text(response.choices[0].message.content)
-        user_histories[user_id].append({"role": "assistant", "content": reply})
 
         if not reply:
             reply = "Ошибка обработки. Попробуй ещё раз."
 
+        user_histories[user_id].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply[:4000])
 
     except Exception as e:
         print("Ошибка текста:", e)
         await update.message.reply_text("Ошибка: " + str(e)[:1000])
+
+
+if not TELEGRAM_TOKEN:
+    raise RuntimeError("Нет TELEGRAM_TOKEN в Environment")
+if not GROQ_API_KEY:
+    raise RuntimeError("Нет GROQ_API_KEY в Environment")
+if not WEBHOOK_URL:
+    raise RuntimeError("Нет WEBHOOK_URL в Environment")
 
 
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -183,4 +194,16 @@ app.run_webhook(
     port=PORT,
     url_path=TELEGRAM_TOKEN,
     webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",
+)
+prompt = update.message.caption or (
+    "На картинке школьные примеры. Сначала внимательно распознай дроби и смешанные числа. "
+    "ВАЖНО: если видишь 7 над 10 — это 7/10, а не 710. "
+    "Если видишь 2 1/3 — это смешанное число 2 + 1/3.\n\n"
+    "Реши ВСЕ примеры. Верни ТОЛЬКО финальные ответы, без решения. "
+    "Каждый ответ с новой строки строго в квадратных скобках.\n"
+    "Пример:\n"
+    "[4]\n"
+    "[113/63]\n"
+    "[1,25]\n"
+    "Не используй LaTeX и объяснения."
 )
