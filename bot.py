@@ -38,7 +38,7 @@ if not WEBHOOK_URL:
 client = Groq(api_key=GROQ_API_KEY)
 
 TEXT_MODEL = "llama-3.3-70b-versatile"
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+VISION_MODEL = "llava-v1.5-7b-4096-preview"
 
 user_histories = {}
 
