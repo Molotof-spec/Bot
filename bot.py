@@ -91,21 +91,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id] = user_histories[user_id][-10:]
 
     try:
-        response = client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Ты умный AI-помощник. Отвечай по-русски, понятно и без воды. "
-                        "Если пользователь просит код, давай готовый рабочий код."
-                    ),
-                }
-            ] + user_histories[user_id],
-            temperature=0.7,
-            max_completion_tokens=1200,
-        )
-
+	response = client.chat.completions.create(
+    	model=TEXT_MODEL,
+    	messages=[
+        {
+            "role": "system",
+            "content": "Ты умный AI помощник, отвечай по-русски."
+        }
+    ] + user_histories[user_id],
+    temperature=0.7,
+    max_completion_tokens=1200,
+)
         reply = response.choices[0].message.content
         user_histories[user_id].append({"role": "assistant", "content": reply})
 
