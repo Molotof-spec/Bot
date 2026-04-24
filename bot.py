@@ -79,7 +79,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         reply = response.choices[0].message.content
-        await update.message.reply_text(reply[:4000])
+        await update.message.reply_text("Ошибка фото: " + str(e)[:1000])
 
     except Exception as e:
         print("Ошибка фото:", e)
