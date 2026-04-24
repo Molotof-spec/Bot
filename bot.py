@@ -265,10 +265,9 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("clear", clear))
 app.add_handler(CommandHandler("help", help_command))
-
 app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-app.add_handler(MessageHandler(filters.TEXT & ~filters)
-(COMMAND, handle_text))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+(COMMAND, handle_text)
 
 print("AI бот запущен через Together webhook 🤖")
 
