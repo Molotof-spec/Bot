@@ -47,18 +47,17 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Память очищена 🧹")
 
 def clean_text(text: str) -> str:
-    text = text.replace("$$", "")
-    text = text.replace("$", "")
-    text = text.replace("\\frac", "")
-    text = text.replace("\\cdot", "×")
-    text = text.replace("\\div", "÷")
-    text = text.replace("\\left", "")
-    text = text.replace("\\right", "")
-    text = text.replace("{", "")
-    text = text.replace("}", "")
-    text = text.replace("###", "")
-    text = text.replace("**", "")
-    return text.strip()
+    lines = text.split("\n")
+    result = []
+
+    for line in lines:
+        line = line.strip()
+
+        # оставляем только строки с ответами
+        if line.startswith("[") and line.endswith("]"):
+            result.append(line)
+
+    return "\n".join(result)
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text("Смотрю картинку 👀")
@@ -67,14 +66,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = await context.bot.get_file(photo.file_id)
         image_url = file.file_path
         caption = update.message.caption or (
-            "Реши все примеры с картинки. "
-            "Верни ТОЛЬКО ответы, без решения и объяснений. "
-            "Каждый ответ пиши с новой строки в квадратных скобках. "
-            "Пример формата:\n"
+            "Реши ВСЕ примеры с картинки.\n\n"
+            "ВАЖНО:\n"
+            "- Пиши ТОЛЬКО ответы\n"
+            "- БЕЗ решения\n"
+            "- БЕЗ объяснений\n"
+            "- БЕЗ слов\n"
+            "- Каждая строка = один ответ\n"
+            "- Формат строго: [ответ]\n\n"
+            "Пример:\n"
             "[4]\n"
             "[113/63]\n"
-            "[1,25]\n"
-            "Не используй LaTeX, $, {}, \\frac, \\cdot, \\div, Markdown."
+            "[1,25]\n\n"
+            "Если напишешь что-то кроме ответов — это ошибка."
 )
 
 
