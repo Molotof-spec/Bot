@@ -27,9 +27,17 @@ if not WEBHOOK_URL:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-TEXT_MODEL = "gemini-2.5-flash"
-VISION_MODEL = "gemini-2.5-flash"
-
+def generate(prompt):
+    for m in models:
+        try:
+            model = genai.GenerativeModel(m)
+            return model.generate_content(prompt).text
+        except Exception as e:
+            if "429" in str(e):
+                continue
+            else:
+                return "Ошибка 🤖"
+    return "⌛ Все лимиты исчерпаны"
 user_histories = {}
 
 keyboard = [
@@ -110,7 +118,6 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id] = []
     await update.message.reply_text("Память очищена 🧹")
 
-
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text("Смотрю картинку 👀")
@@ -121,45 +128,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         image = Image.open(BytesIO(file_bytes)).convert("RGB")
 
-        caption = update.message.caption or ""
-
-        if "решение" in caption.lower() or "подробно" in caption.lower():
-            prompt = (
-                "Реши задания с картинки.\n"
-                "Пиши обычным текстом для Telegram.\n"
-                "НЕ используй LaTeX.\n"
-                "Дроби пиши так: 7/10, 3/8, 1/5.\n"
-                "Корень пиши так: √28.\n"
-                "Смешанные числа пиши так: 2 1/3.\n\n"
-                "Формат:\n"
-                "Задание 1:\n"
-                "Решение:\n"
-                "1) ...\n"
-                "2) ...\n"
-                "Ответ: ...\n\n"
-                "Если пример плохо видно — напиши: не видно."
-            )
-        else:
-            prompt = (
-                "Реши ВСЕ видимые примеры с картинки.\n"
-                "Верни ТОЛЬКО финальные ответы.\n"
-                "Без решения. Без объяснений. Без Markdown. Без LaTeX.\n\n"
-                "ВАЖНО:\n"
-                "7 над 10 = 7/10, НЕ 710.\n"
-                "3 над 8 = 3/8, НЕ 38.\n"
-		"1 над 5 = 1/5, НЕ 15.\n"
-                "2 1/3 = смешанное число, НЕ 213.\n"
-                "√28 = корень из 28.\n\n"
-                "Формат ответа строго:\n"
-                "[4]\n"
-                "[2]\n"
-                "[3/8]\n"
-                "[1/2]\n\n"
-                "Если пример плохо видно — напиши [не видно]."
-            )
+        prompt = (
+            "Реши ВСЕ видимые примеры с картинки.\n"
+            "Верни ТОЛЬКО финальные ответы.\n"
+            "Без решения. Без объяснений. Без Markdown. Без LaTeX.\n"
+            "Дроби пиши так: 7/10. Корень пиши так: √28.\n"
+            "Если пример плохо видно — напиши [не видно]."
+        )
 
         response = client.models.generate_content(
-            model=VISION_MODEL,
+            model="gemini-2.0-flash",
             contents=[prompt, image],
         )
 
@@ -169,6 +147,20 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("Ошибка фото:", e)
         await update.message.reply_text("Ошибка фото: " + str(e)[:1000])
+def generate(prompt):
+    for m in models:
+        try:
+            model = genai.GenerativeModel(m)
+            response = model.generate_content(prompt)
+            return response.text
+
+        except Exception as e:
+            if "429" in str(e) or "503" in str(e):
+                continue
+            else:
+                return "Ошибка 🤖"
+
+    return "⏳ Все лимиты исчерпаны"
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
