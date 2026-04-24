@@ -46,18 +46,19 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id] = []
     await update.message.reply_text("Память очищена 🧹")
 
-def clean_reply(text):
-    text = text.replace("$$", "")
-    text = text.replace("###", "")
-    text = text.replace("**", "")
-    text = text.replace("\\cdot", "×")
-    text = text.replace("\\div", "÷")
-    text = text.replace("\\times", "×")
-    text = text.replace("\\frac", "")
-    text = text.replace("\\", "")
-    text = text.replace("$", "")
-    return text.strip()
-
+def clean_text(text: str) -> str:
+    return (
+        text
+        .replace("$$", "")
+        .replace("$", "")
+        .replace("\\frac", "")
+        .replace("\\cdot", "×")
+        .replace("\\div", "÷")
+        .replace("\\left", "")
+        .replace("\\right", "")
+        .replace("{", "(")
+        .replace("}", ")")
+    )
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text("Смотрю картинку 👀")
@@ -98,8 +99,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             temperature=0.2,
             max_completion_tokens=1200,
         )
-
-        reply = clean_reply(response.choices[0].message.content)
+        reply = clean_text(response.choices[0].message.content)
         await update.message.reply_text(reply[:4000])
 
     except Exception as e:
