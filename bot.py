@@ -50,39 +50,37 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    photo = update.message.photo[-1]  # самое качественное
+    photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
     file_bytes = await file.download_as_bytearray()
 
-    # кодируем в base64
     image_base64 = base64.b64encode(file_bytes).decode("utf-8")
 
-try:
-    response = client.chat.completions.create(
-        model="llama-3.2-11b-vision-preview",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Опиши эту картинку"},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_base64}"
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.2-11b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Опиши эту картинку"},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            }
                         }
-                    }
-                ]
-            }
-        ]
-    )
+                    ]
+                }
+            ]
+        )
 
-    reply = response.choices[0].message.content
-    await update.message.reply_text(reply)
+        reply = response.choices[0].message.content
+        await update.message.reply_text(reply)
 
-except Exception as e:
-    print(e)
-    await update.message.reply_text("Не смог обработать картинку 😅")
-
+    except Exception as e:
+        print(e)
+        await update.message.reply_text("Не смог обработать картинку 😅")
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
