@@ -58,22 +58,23 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(file_bytes).decode("utf-8")
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
-            messages=[
+	response = client.chat.completions.create(
+    	model="llama-3.2-11b-vision-preview",
+    	messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Опиши эту картинку"},
                 {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Опиши эту картинку"},
-                        {
-                            "type": "image_url",
-                            "image_url": f"data:image/jpeg;base64,{image_base64}",
-                        },
-                    ],
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}"
+                    }
                 }
-            ],
-        )
-
+            ]
+        }
+    ]
+)
         reply = response.choices[0].message.content
 
         await update.message.reply_text(reply)
