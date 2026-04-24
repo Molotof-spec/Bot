@@ -46,15 +46,17 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_histories[user_id] = []
     await update.message.reply_text("Память очищена 🧹")
 
-
 def clean_reply(text):
     text = text.replace("$$", "")
-    text = text.replace("\\frac", "")
+    text = text.replace("###", "")
+    text = text.replace("**", "")
     text = text.replace("\\cdot", "×")
     text = text.replace("\\div", "÷")
+    text = text.replace("\\times", "×")
+    text = text.replace("\\frac", "")
     text = text.replace("\\", "")
-    return text
-
+    text = text.replace("$", "")
+    return text.strip()
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -64,14 +66,18 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = await context.bot.get_file(photo.file_id)
         image_url = file.file_path
 
-        caption = update.message.caption or (
-            "Реши примеры с картинки. Пиши красиво и понятно:\n"
-            "- без LaTeX\n"
-            "- используй обычные символы: × ÷ /\n"
-            "- делай шаги\n"
-            "- в конце пиши: Ответ: ...\n"
-            "- если пример плохо видно, честно напиши что именно не видно"
-        )
+	caption = update.message.caption or (
+    		"Реши задания с картинки. "
+    		"Пиши обычным текстом для Telegram. "
+    		"СТРОГО ЗАПРЕЩЕНО использовать LaTeX, символы $, $$, \\frac, \\cdot, \\div, ###, Markdown. "
+    		"Формат:\n"
+    		"Пример 1:\n"
+    		"Решение:\n"
+    		"1) ...\n"
+    		"2) ...\n"
+    		"Ответ: ..."
+	)
+
 
         response = client.chat.completions.create(
             model=VISION_MODEL,
