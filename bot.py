@@ -199,12 +199,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"История:\n{history}\n\n"
             "Ответ:"
         )
-
-        response = client.models.generate_content(
-            model=TEXT_MODEL,
-            contents=prompt,
-        )
-
         reply = clean_text(response.text)
 
         if not reply:
