@@ -40,26 +40,39 @@ markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
 def clean_text(text: str) -> str:
-    text = text or ""
-    text = text.replace("```", "")
-    text = text.replace("$$", "")
-    text = text.replace("$", "")
-    text = text.replace("\\frac", "")
-    text = text.replace("\\cdot", "×")
-    text = text.replace("\\times", "×")
-    text = text.replace("\\div", "÷")
-    text = text.replace("\\left", "")
-    text = text.replace("\\right", "")
-    text = text.replace("\\sqrt", "√")
-    text = text.replace("\\approx", "≈")
-    text = text.replace("\\quad", " ")
-    text = text.replace("###", "")
-    text = text.replace("**", "")
-    text = text.replace("{", "")
-    text = text.replace("}", "")
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+    import re
 
+    text = text or ""
+
+    # сначала правильно превращаем LaTeX-дроби в обычные дроби
+    text = re.sub(r"\\(?:dfrac|tfrac|frac)\s*\{([^{}]+)\}\s*\{([^{}]+)\}", r"\1/\2", text)
+
+    # корни
+    text = re.sub(r"\\sqrt\s*\{([^{}]+)\}", r"√\1", text)
+    text = re.sub(r"\\sqrt\s*([0-9]+)", r"√\1", text)
+
+    replacements = {
+        "```": "",
+        "$$": "",
+        "$": "",
+        "\\cdot": "×",
+        "\\times": "×",
+        "\\div": "÷",
+        "\\left": "",
+        "\\right": "",
+        "\\approx": "≈",
+        "\\quad": " ",
+        "###": "",
+        "**": "",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    text = text.replace("{", "").replace("}", "")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip()
 
 async def send_long(update: Update, text: str):
     text = clean_text(text)
