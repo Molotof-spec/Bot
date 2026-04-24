@@ -12,7 +12,7 @@ WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 PORT = int(os.environ.get("PORT", 10000))
 
 if not TELEGRAM_TOKEN:
-    raise RuntimeError("TELEGRAM_TOKEN не задан")
+   raise RuntimeError("TELEGRAM_TOKEN не задан")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY не задан")
 if not WEBHOOK_URL:
