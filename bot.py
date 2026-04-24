@@ -48,39 +48,42 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Память очищена 🧹")
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-
-    photo = update.message.photo[-1]
-    file = await context.bot.get_file(photo.file_id)
-    file_bytes = await file.download_as_bytearray()
-
-    image_base64 = base64.b64encode(file_bytes).decode("utf-8")
-
     try:
+        await update.message.reply_text("Смотрю картинку 👀")
+
+        photo = update.message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+
+        image_url = file.file_path
+
+        caption = update.message.caption or "Опиши эту картинку по-русски. Если там задача — реши её."
+
         response = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Опиши эту картинку"},
+                        {"type": "text", "text": caption},
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_base64}"
+                                "url": image_url
                             }
                         }
                     ]
                 }
-            ]
+            ],
+            temperature=0.3,
+            max_completion_tokens=1200,
         )
 
         reply = response.choices[0].message.content
-        await update.message.reply_text(reply)
+        await update.message.reply_text(reply[:4000])
 
     except Exception as e:
-        print(e)
-        await update.message.reply_text("Не смог обработать картинку 😅")
+        print("Ошибка фото:", e)
+        await update.message.reply_text("Ошибка фото: " + str(e)[:1000]
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
