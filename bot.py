@@ -1,5 +1,5 @@
 import os
-
+import base64
 from groq import Groq
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
@@ -46,6 +46,42 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_histories[user_id] = []
     await update.message.reply_text("Память очищена 🧹")
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    photo = update.message.photo[-1]  # самое качественное
+    file = await context.bot.get_file(photo.file_id)
+    file_bytes = await file.download_as_bytearray()
+
+    # кодируем в base64
+    image_base64 = base64.b64encode(file_bytes).decode("utf-8")
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.2-11b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Опиши эту картинку"},
+                        {
+                            "type": "image_url",
+                            "image_url": f"data:image/jpeg;base64,{image_base64}",
+                        },
+                    ],
+                }
+            ],
+        )
+
+        reply = response.choices[0].message.content
+
+        await update.message.reply_text(reply)
+
+    except Exception as e:
+        print("Ошибка с картинкой:", e)
+        await update.message.reply_text("Не смог обработать картинку 😅")
+
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -97,6 +133,7 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("clear", clear))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 print("AI бот запущен через webhook 🤖")
