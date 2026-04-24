@@ -92,10 +92,7 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("clear", clear))
 app.add_handler(CommandHandler("help", help_command))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-print("AI бот запущен 🤖")
-app.run_polling()
 from flask import Flask
 import threading
 
@@ -111,9 +108,9 @@ def run_bot():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    print("AI бот запущен 🤖")
     application.run_polling()
 
-threading.Thread(target=run_bot).start()
-
 if name == "__main__":
+    threading.Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=10000)
