@@ -66,7 +66,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = await context.bot.get_file(photo.file_id)
         image_url = file.file_path
 
-	caption = update.message.caption or (
+        caption = update.message.caption or (
     		"Реши задания с картинки. "
     		"Пиши обычным текстом для Telegram. "
     		"СТРОГО ЗАПРЕЩЕНО использовать LaTeX, символы $, $$, \\frac, \\cdot, \\div, ###, Markdown. "
