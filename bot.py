@@ -1,5 +1,6 @@
 import os
 import base64
+
 from groq import Groq
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
@@ -9,16 +10,10 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 PORT = int(os.environ.get("PORT", 10000))
 
-if not TELEGRAM_TOKEN:
-    raise RuntimeError("TELEGRAM_TOKEN не задан")
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY не задан")
-if not WEBHOOK_URL:
-    raise RuntimeError("WEBHOOK_URL не задан")
-
 client = Groq(api_key=GROQ_API_KEY)
 
 TEXT_MODEL = "llama-3.3-70b-versatile"
+VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 user_histories = {}
 
@@ -29,23 +24,37 @@ keyboard = [
 
 markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет 😎 Я AI-бот. Напиши любой вопрос.",
+        "Привет 😎 Я AI-бот. Напиши вопрос или отправь фото.",
         reply_markup=markup,
     )
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "/start — запуск\n"
         "/clear — очистить память\n"
-        "/help — помощь"
+        "/help — помощь\n\n"
+        "Отправь фото с задачей — я попробую решить красиво."
     )
+
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_histories[user_id] = []
     await update.message.reply_text("Память очищена 🧹")
+
+
+def clean_reply(text):
+    text = text.replace("$$", "")
+    text = text.replace("\\frac", "")
+    text = text.replace("\\cdot", "×")
+    text = text.replace("\\div", "÷")
+    text = text.replace("\\", "")
+    return text
+
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -53,13 +62,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         photo = update.message.photo[-1]
         file = await context.bot.get_file(photo.file_id)
-
         image_url = file.file_path
 
-        caption = update.message.caption or "Опиши эту картинку по-русски. Если там задача — реши её."
+        caption = update.message.caption or (
+            "Реши примеры с картинки. Пиши красиво и понятно:\n"
+            "- без LaTeX\n"
+            "- используй обычные символы: × ÷ /\n"
+            "- делай шаги\n"
+            "- в конце пиши: Ответ: ...\n"
+            "- если пример плохо видно, честно напиши что именно не видно"
+        )
 
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model=VISION_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -74,16 +89,18 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ]
                 }
             ],
-            temperature=0.3,
+            temperature=0.2,
             max_completion_tokens=1200,
         )
 
-        reply = response.choices[0].message.content
+        reply = clean_reply(response.choices[0].message.content)
         await update.message.reply_text(reply[:4000])
 
     except Exception as e:
         print("Ошибка фото:", e)
         await update.message.reply_text("Ошибка фото: " + str(e)[:1000])
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
@@ -113,27 +130,34 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты умный AI-помощник. Отвечай по-русски понятно и коротко."
+                    "content": (
+                        "Ты умный AI-помощник.
+			 Отвечай по-русски понятно и красиво. "
+                        "Не используй LaTeX, если пользователь не просит. "
+                        "Для математики используй обычные символы: × ÷ /."
+                    )
                 }
             ] + user_histories[user_id],
             temperature=0.7,
             max_completion_tokens=1000,
         )
 
-        reply = response.choices[0].message.content
+        reply = clean_reply(response.choices[0].message.content)
         user_histories[user_id].append({"role": "assistant", "content": reply})
 
         await update.message.reply_text(reply[:4000])
 
     except Exception as e:
-        print("Ошибка:", e)
-        await update.message.reply_text("Упс, ошибка 😅 Попробуй ещё раз.")
+        print("Ошибка текста:", e)
+        await update.message.reply_text("Ошибка: " + str(e)[:1000])
+
 
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("clear", clear))
 app.add_handler(CommandHandler("help", help_command))
+
 app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
